@@ -14,6 +14,7 @@ entry point; bulky detail is pushed into `references/` and `scripts/`.
 
 | Skill | Description |
 |---|---|
+| [microovn-intro](microovn-intro/SKILL.md) | What MicroOVN is and how it fits together — the OVN/OVS/microcluster/dqlite relationship, the snap services, and the logical → physical data path, explained analogy-first for new joiners. |
 | [microovn-dev-loop](microovn-dev-loop/SKILL.md) | The everyday MicroOVN developer loop: `go build`/`test`/`vet`, gofmt, linters, the snap build, and the BATS functional tests — including the libdqlite (cgo) prerequisite. |
 | [ovn-sru](ovn-sru/SKILL.md) | Package an OVN change as a quilt patch and ship it to users: Debian salsa packaging, Ubuntu sync, PPA upload, and the noble SRU / Launchpad merge request. |
 | [ovn-charms](ovn-charms/SKILL.md) | Work on the legacy reactive OVN charms (`ovn-central`, `ovn-chassis`, `ovn-dedicated-chassis`): build, unit test, lint, and read the flaky functional CI. |
