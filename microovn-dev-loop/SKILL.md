@@ -1,21 +1,55 @@
 ---
 name: microovn-dev-loop
-description: "The everyday MicroOVN developer loop — build, unit test, vet, and lint the Go code, and build the snap/run the BATS functional tests. Use when working on the microovn codebase (canonical/microovn), asked to build or test MicroOVN, hitting the go-dqlite cgo build error, or onboarding to the repo. Covers the libdqlite prerequisite, the exact cert/lint commands, and the snap/BATS invocation."
-argument-hint: "what to do (build / test / vet / lint / snap / bats), or the error you hit"
+description: "The everyday MicroOVN developer loop — build the snap with `make`, then run the code checks (unit test, vet, fmt, lint) and the BATS functional tests. Use when working on the microovn codebase (canonical/microovn), asked to build or test MicroOVN, or onboarding to the repo. Covers the snap build, the go test/vet/lint checks and their libdqlite (cgo) prerequisite, and the BATS invocation."
+argument-hint: "what to do (build / test / vet / lint / functional), or the error you hit"
 ---
 
 # MicroOVN Dev Loop
 
-MicroOVN is snap-deployed OVN with microcluster clustering. The Go module is at
-`microovn/` (repo root holds the snap + tests), and it is a **cgo** project:
-it links `canonical/go-dqlite` and `mattn/go-sqlite3`, so the Go toolchain
-alone is not enough — you need a C compiler and a recent libdqlite.
+MicroOVN is a **snap** — the build artifact is `microovn.snap`. Per
+`docs/contributors/code.rst`, the build requirements are *Make and snapcraft*,
+and you build with `make`. The Go module at `microovn/` is what gets compiled
+*inside* that build; it is not the build itself.
 
-## One-time setup (dqlite)
+## Build the snap
 
-Ubuntu's `libdqlite0` (1.16) is too old for go-dqlite v3, so build dqlite from
-source. This mirrors how the snap builds it (its `dqlite` part builds
-`canonical/dqlite` default branch with `--enable-build-raft`).
+```bash
+make          # snapcraft pack -o microovn.snap  (needs snapcraft + LXD)
+```
+
+`make` compiles the Go source and, as part of the snap build, builds its own
+`dqlite` part — so you do **not** need to install libdqlite yourself to build
+the snap.
+
+## Code checks (what CI runs between snap builds)
+
+These operate on the Go source directly and do need libdqlite (cgo) installed:
+
+```bash
+cd microovn
+
+go test ./...          # full unit suite
+go vet ./...           # static checks
+gofmt -l .             # must print nothing
+golangci-lint run      # Go linter (0 issues expected)
+```
+
+Shellcheck lint of the test suite runs from the repo root (needs `make` +
+`shellcheck`):
+
+```bash
+cd ..
+make check-lint
+```
+
+If a check fails, fix and rerun only that check.
+
+## One-time setup for the Go checks (libdqlite)
+
+Raw `go test`/`go vet`/`golangci-lint` link `go-dqlite` + `mattn/go-sqlite3`
+via cgo. Ubuntu's `libdqlite0` (1.16) is too old for go-dqlite v3, so build it
+from source (mirrors the snap's `dqlite` part — `canonical/dqlite`,
+`--enable-build-raft`):
 
 ```bash
 sudo apt-get install -y make gcc pkg-config autoconf automake libtool \
@@ -29,46 +63,16 @@ sudo make install
 sudo ldconfig
 ```
 
-Without this, `go build` fails with
+Without this, `go test`/`go vet` fail with
 `build constraints exclude all Go files in .../go-dqlite/v3/.../internal/bindings`
 and `undefined: sqlite3.ErrConstraintUnique`.
 
-> **Workshop shortcut:** the repo ships a `workshop.yaml`. `workshop run -- deps`
-> performs the setup above inside a Workshop sandbox, then
-> `workshop run -- build` / `test-unit` / `vet` / `fmt-check` / `lint-go` /
-> `lint-sh` run the loop. See `workshop.yaml` in the repo root.
+> **Workshop shortcut:** the repo ships a `workshop.yaml`.
+> `workshop run -- deps` performs the setup above inside a Workshop sandbox,
+> then `workshop run -- test-unit` / `vet` / `fmt-check` / `lint-go` / `lint-sh`
+> run the checks. See `workshop.yaml` in the repo root.
 
-## Workflow
-
-Run from `microovn/` (the Go module directory):
-
-```bash
-cd microovn
-
-go build ./...          # compile everything
-go test ./...           # full unit suite
-go vet ./...            # static checks
-gofmt -l .              # must print nothing
-golangci-lint run       # Go linter (0 issues expected)
-```
-
-Shellcheck lint of the test suite runs from the **repo root** (needs `make`
-and `shellcheck`):
-
-```bash
-cd ..
-make check-lint
-```
-
-If any check fails, fix and rerun only that check.
-
-## Snap + functional tests
-
-The `make` target builds the snap (needs `snapcraft` + LXD):
-
-```bash
-make                     # produces microovn.snap
-```
+## Functional tests
 
 BATS functional tests deploy OVN into LXD:
 
@@ -85,7 +89,7 @@ Gotchas:
 
 ## Key rules
 
-- `go build` / `go test` fail without libdqlite installed — do the setup first.
+- **Build with `make`** — that is the deliverable (the snap).
+- The go checks above need libdqlite installed; `make` does not.
 - Commit subjects end with a full stop.
-- See `docs/contributors/code.rst` for the snap build/install flow (the Go
-  dev loop above is what CI exercises).
+- See `docs/contributors/code.rst` for the snap build/install flow.
